@@ -96,7 +96,7 @@ export default async function DashboardPage() {
 
           <div className={styles.macroBars}>
             {['protein', 'carbs', 'fat'].map((macro) => {
-              const data = macros[macro as keyof typeof macros];
+              const data = macros[macro as keyof Omit<typeof macros, 'calories'>];
               const percent = Math.min((data.current / data.target) * 100, 100);
               const labelMap = { protein: 'Proteínas', carbs: 'Carbohidratos', fat: 'Grasas' };
               
