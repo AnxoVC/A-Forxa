@@ -9,9 +9,24 @@ const intlMiddleware = createMiddleware(routing);
 export async function middleware(request: NextRequest) {
   const response = intlMiddleware(request);
 
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    // If env vars are missing (e.g. in Vercel before user adds them), skip auth check
+    // and just do locale redirect to avoid crashing the edge function and returning 404.
+    const pathname = request.nextUrl.pathname;
+    const isAuthPage = /\/(es|gl|en)\/auth/.test(pathname);
+    const isRootOrLocale = /^\/((es|gl|en))?(\/?)?$/.test(pathname);
+    
+    if (!isAuthPage && !isRootOrLocale) {
+      const locale = pathname.split('/')[1] || 'es';
+      const validLocale = ['es', 'gl', 'en'].includes(locale) ? locale : 'es';
+      return NextResponse.redirect(new URL(`/${validLocale}/auth`, request.url));
+    }
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
