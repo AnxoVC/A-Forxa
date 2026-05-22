@@ -1,0 +1,36 @@
+.navItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-2);
+  width: 64px;
+  height: 100%;
+  transition: color 0.2s;
+}
+
+.navItem.active {
+  color: var(--fire-1);
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.actionBtn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--fire-grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-20px);
+  box-shadow: var(--fire-glow);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.actionBtn:active {
+  transform: translateY(-20px) scale(0.95);
+}

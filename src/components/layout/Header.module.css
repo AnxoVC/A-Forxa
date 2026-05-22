@@ -1,0 +1,70 @@
+.mobileLogo {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .mobileLogo { display: none; }
+}
+
+.logoIcon {
+  font-size: 24px;
+}
+
+.centerTitle {
+  flex: 1;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .centerTitle { text-align: left; margin-left: 16px; }
+}
+
+.title {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.streakBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-card);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.iconBtn {
+  color: var(--text-2);
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.iconBtn:hover {
+  color: var(--text-1);
+}
+
+.mobileAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--fire-1);
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  .mobileAvatar { display: none; }
+}
