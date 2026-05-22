@@ -77,7 +77,7 @@ export default async function DashboardPage() {
     <div className={styles.dashboard}>
       <div className={styles.greeting}>
         <div>
-          <h1>¡Hola, {user?.email?.split('@')[0] || 'Forjador'}!</h1>
+          <h1>¡Hola, {user?.email?.split('@')[0] || 'Anxo'}!</h1>
           <p>{date.charAt(0).toUpperCase() + date.slice(1)}</p>
         </div>
         <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

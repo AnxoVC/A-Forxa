@@ -14,9 +14,7 @@ export async function middleware(request: NextRequest) {
     // and just do locale redirect to avoid crashing the edge function and returning 404.
     const pathname = request.nextUrl.pathname;
     const isAuthPage = /\/(es|gl|en)\/auth/.test(pathname);
-    const isRootOrLocale = /^\/((es|gl|en))?(\/?)?$/.test(pathname);
-    
-    if (!isAuthPage && !isRootOrLocale) {
+    if (!isAuthPage) {
       const locale = pathname.split('/')[1] || 'es';
       const validLocale = ['es', 'gl', 'en'].includes(locale) ? locale : 'es';
       return NextResponse.redirect(new URL(`/${validLocale}/auth`, request.url));
@@ -50,9 +48,8 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isAuthPage = /\/(es|gl|en)\/auth/.test(pathname);
-  const isRootOrLocale = /^\/((es|gl|en))?(\/?)?$/.test(pathname);
 
-  if (!user && !isAuthPage && !isRootOrLocale) {
+  if (!user && !isAuthPage) {
     const locale = pathname.split('/')[1] || 'es';
     const validLocale = ['es', 'gl', 'en'].includes(locale) ? locale : 'es';
     return NextResponse.redirect(new URL(`/${validLocale}/auth`, request.url));
