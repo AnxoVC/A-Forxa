@@ -1,0 +1,238 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.scanBtn {
+  background: var(--bg-card);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.scanBtn:hover {
+  background: var(--bg-surface);
+  border-color: var(--fire-1);
+}
+
+.tabs {
+  display: flex;
+  background: var(--bg-card);
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.tab {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: all 0.2s;
+}
+
+.tab.active {
+  background: var(--bg-surface);
+  color: var(--text-1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.searchBar {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.searchBar input {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 14px 14px 14px 44px;
+  border-radius: 12px;
+  color: var(--text-1);
+}
+
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-2);
+}
+
+.macrosOverview {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  text-align: center;
+}
+
+.macroItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.macroLabel {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.macroValue {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.mealsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mealCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.mealHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.mealTitle {
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mealAddBtn {
+  color: var(--fire-1);
+  background: rgba(249, 115, 22, 0.1);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.emptyMeal {
+  color: var(--text-3);
+  font-size: 14px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* Shopping List Styles */
+.shoppingItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shoppingItem:last-child {
+  border-bottom: none;
+}
+
+.checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: transparent;
+}
+
+.checkbox.checked {
+  background: var(--fire-grad);
+  border-color: transparent;
+  color: white;
+}
+
+.itemInfo {
+  flex: 1;
+}
+
+.itemName {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.itemName.crossed {
+  text-decoration: line-through;
+  color: var(--text-2);
+}
+
+.itemMeta {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* Weekly Menu Styles */
+.weeklyGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .weeklyGrid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+.dayCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  min-width: 140px;
+}
+
+.dayName {
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
