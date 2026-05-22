@@ -6,7 +6,7 @@ import type { NextRequest } from 'next/server';
 
 const intlMiddleware = createMiddleware(routing);
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const response = intlMiddleware(request);
 
   const supabase = createServerClient(
