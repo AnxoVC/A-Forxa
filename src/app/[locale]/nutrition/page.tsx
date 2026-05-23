@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { Search, Barcode, Plus, Utensils, Apple, Coffee, Flame, AlertCircle } from 'lucide-react';
+import { Plus, Utensils, Apple, Coffee, Flame, ChevronRight, ShoppingCart } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import FoodSearchModal from '@/components/nutrition/FoodSearchModal';
-import { format } from 'date-fns';
+import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface NutritionLog {
   id: string;
+  date: string;
   meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   food_name: string;
   brand: string | null;
@@ -20,20 +22,28 @@ interface NutritionLog {
 }
 
 export default function NutritionPage() {
-  const t = useTranslations('nav');
+  const t = useTranslations('nutrition');
   const [activeTab, setActiveTab] = useState<'diary' | 'menu'>('diary');
   
   // Database states
   const [logs, setLogs] = useState<NutritionLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [targetCalories, setTargetCalories] = useState(2000);
-  const [targetProtein, setTargetProtein] = useState(150);
+  const [targetCalories, setTargetCalories] = useState(0);
+  const [targetProtein, setTargetProtein] = useState(0);
 
-  // Modal states
+  // Modal & Selection states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+
+  // Weekly Plan states
+  const [expandedDay, setExpandedDay] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   const supabase = createClient();
+  
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
+  const weekDays = Array.from({ length: 7 }).map((_, i) => format(addDays(weekStart, i), 'yyyy-MM-dd'));
 
   useEffect(() => {
     fetchData();
@@ -53,16 +63,16 @@ export default function NutritionPage() {
         setTargetProtein(profileData.target_protein || 0);
       }
 
-      // 2. Fetch Today's Logs
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const { data: todayLogs } = await supabase
+      // 2. Fetch Entire Week's Logs
+      const { data: weekLogs } = await supabase
         .from('nutrition_logs')
         .select('*')
         .eq('user_id', userData.user.id)
-        .eq('date', today);
+        .gte('date', weekDays[0])
+        .lte('date', weekDays[6]);
 
-      if (todayLogs) {
-        setLogs(todayLogs);
+      if (weekLogs) {
+        setLogs(weekLogs);
       }
     } catch (err) {
       console.error('Error fetching nutrition data', err);
@@ -76,12 +86,11 @@ export default function NutritionPage() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      const today = format(new Date(), 'yyyy-MM-dd');
       const multiplier = amountG / 100;
       
       const newLog = {
         user_id: userData.user.id,
-        date: today,
+        date: selectedDate, // Uses the specifically selected date (today for diary, any day for planner)
         meal_type: selectedMeal,
         food_name: food.name,
         brand: food.brand,
@@ -112,19 +121,22 @@ export default function NutritionPage() {
     }
   };
 
-  const openSearch = (meal: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+  const openSearch = (meal: 'breakfast' | 'lunch' | 'dinner' | 'snack', date: string = todayStr) => {
     setSelectedMeal(meal);
+    setSelectedDate(date);
     setIsModalOpen(true);
   };
 
-  // Calculate Totals
-  const totalCalories = logs.reduce((sum, log) => sum + log.calories, 0);
-  const totalProtein = logs.reduce((sum, log) => sum + log.protein, 0);
-  const totalCarbs = logs.reduce((sum, log) => sum + log.carbs, 0);
-  const totalFat = logs.reduce((sum, log) => sum + log.fat, 0);
+  // View specific logs
+  const displayLogs = activeTab === 'diary' ? logs.filter(l => l.date === todayStr) : logs;
+  
+  const totalCalories = displayLogs.filter(l => l.date === todayStr).reduce((sum, log) => sum + log.calories, 0);
+  const totalProtein = displayLogs.filter(l => l.date === todayStr).reduce((sum, log) => sum + log.protein, 0);
+  const totalCarbs = displayLogs.filter(l => l.date === todayStr).reduce((sum, log) => sum + log.carbs, 0);
+  const totalFat = displayLogs.filter(l => l.date === todayStr).reduce((sum, log) => sum + log.fat, 0);
 
-  const renderMealSection = (type: 'breakfast' | 'lunch' | 'dinner' | 'snack', title: string, icon: any) => {
-    const mealLogs = logs.filter(l => l.meal_type === type);
+  const renderMealSection = (type: 'breakfast' | 'lunch' | 'dinner' | 'snack', title: string, icon: any, date: string = todayStr) => {
+    const mealLogs = logs.filter(l => l.meal_type === type && l.date === date);
     const mealCalories = mealLogs.reduce((sum, log) => sum + log.calories, 0);
 
     return (
@@ -140,7 +152,7 @@ export default function NutritionPage() {
             </div>
           </div>
           <button 
-            onClick={() => openSearch(type)}
+            onClick={() => openSearch(type, date)}
             className="text-fire hover:bg-white/5" 
             style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
           >
@@ -182,17 +194,22 @@ export default function NutritionPage() {
   return (
     <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
+      {/* Header Tabs */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Nutrición</h1>
+      </div>
+
       {/* Tabs */}
       <div style={{ display: 'flex', background: 'var(--bg-base)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
         <button 
           onClick={() => setActiveTab('diary')}
-          style={{ flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600, background: activeTab === 'diary' ? 'var(--bg-surface)' : 'transparent', color: activeTab === 'diary' ? 'var(--text-1)' : 'var(--text-2)', boxShadow: activeTab === 'diary' ? '0 2px 8px rgba(0,0,0,0.2)' : 'none' }}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600, background: activeTab === 'diary' ? 'var(--bg-surface)' : 'transparent', color: activeTab === 'diary' ? 'var(--text-1)' : 'var(--text-2)', boxShadow: activeTab === 'diary' ? '0 2px 8px rgba(0,0,0,0.2)' : 'none', border: 'none', cursor: 'pointer' }}
         >
           Diario
         </button>
         <button 
           onClick={() => setActiveTab('menu')}
-          style={{ flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600, background: activeTab === 'menu' ? 'var(--bg-surface)' : 'transparent', color: activeTab === 'menu' ? 'var(--text-1)' : 'var(--text-2)', boxShadow: activeTab === 'menu' ? '0 2px 8px rgba(0,0,0,0.2)' : 'none' }}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600, background: activeTab === 'menu' ? 'var(--bg-surface)' : 'transparent', color: activeTab === 'menu' ? 'var(--text-1)' : 'var(--text-2)', boxShadow: activeTab === 'menu' ? '0 2px 8px rgba(0,0,0,0.2)' : 'none', border: 'none', cursor: 'pointer' }}
         >
           Plan Semanal
         </button>
@@ -206,7 +223,7 @@ export default function NutritionPage() {
               <div>
                 <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-2)' }}>Restantes hoy</h3>
                 <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {Math.max(0, targetCalories - totalCalories)} <span style={{ fontSize: '16px', color: 'var(--text-3)', fontWeight: 500 }}>kcal</span>
+                  {targetCalories > 0 ? Math.max(0, targetCalories - totalCalories) : totalCalories} <span style={{ fontSize: '16px', color: 'var(--text-3)', fontWeight: 500 }}>{targetCalories > 0 ? 'kcal' : 'kcal consumidas'}</span>
                 </div>
               </div>
               <div style={{ width: '64px', height: '64px', borderRadius: '50%', border: '6px solid var(--fire-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -218,10 +235,10 @@ export default function NutritionPage() {
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
                   <span style={{ color: 'var(--blue-1)' }}>Proteínas</span>
-                  <span>{totalProtein.toFixed(0)} / {targetProtein}g</span>
+                  <span>{totalProtein.toFixed(0)} {targetProtein > 0 ? `/ ${targetProtein}g` : 'g'}</span>
                 </div>
                 <div style={{ height: '6px', background: 'var(--bg-surface)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', background: 'var(--blue-1)', width: `${Math.min(100, (totalProtein / targetProtein) * 100)}%` }}></div>
+                  <div style={{ height: '100%', background: 'var(--blue-1)', width: targetProtein > 0 ? `${Math.min(100, (totalProtein / targetProtein) * 100)}%` : '100%' }}></div>
                 </div>
               </div>
               <div style={{ flex: 1 }}>
@@ -247,19 +264,59 @@ export default function NutritionPage() {
 
           {/* Meals */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {renderMealSection('breakfast', 'Desayuno', <Coffee size={18} className="text-fire" />)}
-            {renderMealSection('lunch', 'Comida', <Utensils size={18} className="text-fire" />)}
-            {renderMealSection('dinner', 'Cena', <Utensils size={18} className="text-fire" />)}
-            {renderMealSection('snack', 'Snacks', <Apple size={18} className="text-fire" />)}
+            {renderMealSection('breakfast', 'Desayuno', <Coffee size={18} className="text-fire" />, todayStr)}
+            {renderMealSection('lunch', 'Comida', <Utensils size={18} className="text-fire" />, todayStr)}
+            {renderMealSection('dinner', 'Cena', <Utensils size={18} className="text-fire" />, todayStr)}
+            {renderMealSection('snack', 'Snacks', <Apple size={18} className="text-fire" />, todayStr)}
           </div>
         </>
       )}
 
       {activeTab === 'menu' && (
-        <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center', color: 'var(--text-3)' }}>
-          <AlertCircle size={48} style={{ margin: '0 auto 16px auto', opacity: 0.2 }} />
-          <h3 style={{ color: 'var(--text-1)', fontSize: '18px', margin: '0 0 8px 0' }}>Plan Semanal Próximamente</h3>
-          <p style={{ margin: 0, fontSize: '14px' }}>Esta función te permitirá planificar tus comidas de toda la semana y generar la lista de la compra automáticamente.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          <button style={{ width: '100%', padding: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', color: 'var(--text-1)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+            <ShoppingCart size={20} className="text-fire" /> Generar Lista de Compra
+          </button>
+
+          {weekDays.map(dateStr => {
+            const dateObj = new Date(dateStr);
+            const dayName = format(dateObj, 'EEEE', { locale: es });
+            const isToday = dateStr === todayStr;
+            const dayLogs = logs.filter(l => l.date === dateStr);
+            const dayCals = dayLogs.reduce((sum, l) => sum + l.calories, 0);
+            
+            return (
+              <div key={dateStr} style={{ background: 'var(--bg-card)', borderRadius: '16px', border: isToday ? '2px solid var(--fire-1)' : '1px solid var(--border)', overflow: 'hidden' }}>
+                <div 
+                  onClick={() => setExpandedDay(expandedDay === dateStr ? '' : dateStr)}
+                  style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: expandedDay === dateStr ? 'var(--bg-surface)' : 'transparent' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: isToday ? 'var(--fire-1)' : 'var(--bg-surface)', color: isToday ? 'white' : 'var(--text-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '18px' }}>
+                      {format(dateObj, 'd')}
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, textTransform: 'capitalize' }}>
+                        {dayName} {isToday && <span style={{ fontSize: '12px', color: 'var(--fire-1)', marginLeft: '8px' }}>Hoy</span>}
+                      </h3>
+                      <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{dayLogs.length} comidas • {dayCals} kcal</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={20} style={{ color: 'var(--text-3)', transform: expandedDay === dateStr ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                </div>
+                
+                {expandedDay === dateStr && (
+                  <div style={{ padding: '16px', borderTop: '1px solid var(--border)' }}>
+                    {renderMealSection('breakfast', 'Desayuno', <Coffee size={18} className="text-fire" />, dateStr)}
+                    {renderMealSection('lunch', 'Comida', <Utensils size={18} className="text-fire" />, dateStr)}
+                    {renderMealSection('dinner', 'Cena', <Utensils size={18} className="text-fire" />, dateStr)}
+                    {renderMealSection('snack', 'Snacks', <Apple size={18} className="text-fire" />, dateStr)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

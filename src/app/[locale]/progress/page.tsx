@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { LineChart, Activity, TrendingUp, Calendar, ArrowUpRight, ArrowDownRight, Plus } from 'lucide-react';
+import { Activity, TrendingUp, Calendar, ArrowUpRight, ArrowDownRight, Plus, Dumbbell } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function ProgressPage() {
-  const t = useTranslations('nav');
+  const t = useTranslations('progress');
   const [weightLogs, setWeightLogs] = useState<any[]>([]);
+  const [workoutLogs, setWorkoutLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddWeight, setShowAddWeight] = useState(false);
   const [newWeight, setNewWeight] = useState('');
@@ -26,13 +28,23 @@ export default function ProgressPage() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      const { data } = await supabase
+      const { data: wLogs } = await supabase
         .from('progress_logs')
         .select('*')
         .eq('user_id', userData.user.id)
         .order('date', { ascending: false });
 
-      if (data) setWeightLogs(data);
+      if (wLogs) setWeightLogs(wLogs);
+
+      const { data: woLogs } = await supabase
+        .from('workout_logs')
+        .select('*, workout_sets(weight, reps)')
+        .eq('user_id', userData.user.id)
+        .order('date', { ascending: false })
+        .limit(30);
+
+      if (woLogs) setWorkoutLogs(woLogs);
+
     } catch (error) {
       console.error('Error fetching progress:', error);
     } finally {
@@ -76,6 +88,17 @@ export default function ProgressPage() {
 
   const diff = getWeightDifference();
 
+  const chartData = [...weightLogs].reverse().map(log => ({
+    date: format(new Date(log.date), 'MMM d'),
+    weight: log.weight_kg
+  }));
+
+  // Calculate Total Volume Lifted in last 30 days
+  const totalVolume = workoutLogs.reduce((acc, workout) => {
+    const workoutVol = workout.workout_sets?.reduce((sum: number, set: any) => sum + ((set.weight || 0) * (set.reps || 0)), 0) || 0;
+    return acc + workoutVol;
+  }, 0);
+
   return (
     <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
       
@@ -83,34 +106,80 @@ export default function ProgressPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
           <TrendingUp size={28} className="text-fire" />
-          Progreso
+          {t('title') || 'Progreso'}
         </h1>
         <button onClick={() => setShowAddWeight(true)} style={{ background: 'var(--fire-1)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
           <Plus size={16} /> Añadir Peso
         </button>
       </div>
 
-      {/* Main Metric Card */}
-      <div style={{ background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(59, 130, 246, 0.05) 100%)', borderRadius: '24px', padding: '24px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Peso Actual
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-            <span style={{ fontSize: '48px', fontWeight: 800, color: 'var(--text-1)', lineHeight: 1 }}>
-              {weightLogs.length > 0 ? weightLogs[0].weight_kg : '0.0'}
-            </span>
-            <span style={{ fontSize: '20px', color: 'var(--text-3)', fontWeight: 600 }}>kg</span>
-          </div>
-
-          {diff && (
-            <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: diff.isDown ? '#10B981' : 'var(--fire-2)', fontSize: '14px', fontWeight: 600, background: diff.isDown ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '6px 12px', borderRadius: '20px', width: 'fit-content' }}>
-              {diff.isDown ? <ArrowDownRight size={16} /> : <ArrowUpRight size={16} />}
-              {diff.value} kg desde la última vez
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+        {/* Main Metric Card */}
+        <div style={{ background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(59, 130, 246, 0.05) 100%)', borderRadius: '24px', padding: '24px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Peso Actual
             </div>
-          )}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+              <span style={{ fontSize: '48px', fontWeight: 800, color: 'var(--text-1)', lineHeight: 1 }}>
+                {weightLogs.length > 0 ? weightLogs[0].weight_kg : '0.0'}
+              </span>
+              <span style={{ fontSize: '20px', color: 'var(--text-3)', fontWeight: 600 }}>kg</span>
+            </div>
+
+            {diff && (
+              <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: diff.isDown ? '#10B981' : 'var(--fire-2)', fontSize: '14px', fontWeight: 600, background: diff.isDown ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '6px 12px', borderRadius: '20px', width: 'fit-content' }}>
+                {diff.isDown ? <ArrowDownRight size={16} /> : <ArrowUpRight size={16} />}
+                {diff.value} kg desde la última vez
+              </div>
+            )}
+          </div>
+          <Activity size={120} style={{ position: 'absolute', right: '-20px', bottom: '-20px', color: 'var(--blue-1)', opacity: 0.1, transform: 'rotate(-15deg)' }} />
         </div>
-        <Activity size={120} style={{ position: 'absolute', right: '-20px', bottom: '-20px', color: 'var(--blue-1)', opacity: 0.1, transform: 'rotate(-15deg)' }} />
+
+        {/* Volume Card */}
+        <div style={{ background: 'var(--bg-card)', borderRadius: '24px', padding: '24px', border: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Dumbbell size={16} className="text-fire" /> Volumen (Últimos 30 días)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-1)', lineHeight: 1 }}>
+              {totalVolume.toLocaleString()}
+            </span>
+            <span style={{ fontSize: '16px', color: 'var(--text-3)', fontWeight: 600 }}>kg</span>
+          </div>
+          <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: 'var(--text-3)' }}>En {workoutLogs.length} entrenamientos</p>
+        </div>
+      </div>
+
+      {/* Chart Section */}
+      <div style={{ background: 'var(--bg-card)', borderRadius: '24px', padding: '24px', border: '1px solid var(--border)' }}>
+        <h2 style={{ fontSize: '18px', margin: '0 0 24px 0', fontWeight: 600 }}>Evolución del Peso</h2>
+        {chartData.length > 1 ? (
+          <div style={{ width: '100%', height: '300px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--blue-1)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--blue-1)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" stroke="var(--text-3)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis domain={['dataMin - 2', 'dataMax + 2']} stroke="var(--text-3)" fontSize={12} tickLine={false} axisLine={false} width={30} />
+                <Tooltip 
+                  contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                  itemStyle={{ color: 'var(--blue-1)', fontWeight: 600 }}
+                />
+                <Area type="monotone" dataKey="weight" stroke="var(--blue-1)" strokeWidth={3} fillOpacity={1} fill="url(#colorWeight)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', border: '1px dashed var(--border)', borderRadius: '16px' }}>
+            Añade al menos 2 pesajes para ver el gráfico
+          </div>
+        )}
       </div>
 
       {/* History List */}

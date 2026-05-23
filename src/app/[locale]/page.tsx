@@ -68,6 +68,16 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
   // A helper component for the circular progress (Donut)
   const CalorieDonut = () => {
+    if (!macros.calories.target || macros.calories.target === 0) {
+      return (
+        <div style={{ padding: '24px', textAlign: 'center', background: 'var(--bg-surface)', borderRadius: '16px', marginBottom: '24px' }}>
+          <Target size={32} style={{ color: 'var(--text-3)', margin: '0 auto 12px auto' }} />
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-2)' }}>Sin objetivo calórico</h3>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-3)' }}>Ve a tu Perfil para configurar tus metas diarias.</p>
+        </div>
+      );
+    }
+
     const size = 200;
     const strokeWidth = 16;
     const center = size / 2;
