@@ -97,7 +97,8 @@ export default function ProfilePage() {
           const pb = supabase.from('progress_logs') as any;
           await pb.update({ weight_kg: profile.weight }).eq('id', (existingLog as any).id);
         } else {
-          await supabase.from('progress_logs').insert({
+          const pb = supabase.from('progress_logs') as any;
+          await pb.insert({
             user_id: user.id,
             date: today,
             weight_kg: profile.weight
