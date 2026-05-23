@@ -49,8 +49,8 @@ export default function NutritionPage() {
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', userData.user.id).single();
       const profileData = profile as any;
       if (profileData) {
-        setTargetCalories(profileData.target_calories || 2000);
-        setTargetProtein(profileData.target_protein || 150);
+        setTargetCalories(profileData.target_calories || 0);
+        setTargetProtein(profileData.target_protein || 0);
       }
 
       // 2. Fetch Today's Logs

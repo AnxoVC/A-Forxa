@@ -7,6 +7,8 @@ import { useTranslations } from 'next-intl';
 import { Home, Dumbbell, Utensils, LineChart, User } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
+import ThemeLanguageToggles from './ThemeLanguageToggles';
+
 export default function Sidebar({ user }: { user: any }) {
   const t = useTranslations('nav');
   const pathname = usePathname();
@@ -45,7 +47,8 @@ export default function Sidebar({ user }: { user: any }) {
         })}
       </nav>
 
-      <div className={styles.footer}>
+      <div className={styles.footer} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <ThemeLanguageToggles />
         <div className={styles.userInfo}>
           <div className={styles.avatar}>{user?.email?.charAt(0).toUpperCase() || 'U'}</div>
           <span className={styles.email}>{user?.email}</span>

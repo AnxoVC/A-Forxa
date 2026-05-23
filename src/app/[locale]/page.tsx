@@ -14,23 +14,53 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // In a real app, fetch this from Supabase profiles/nutrition_entries
+  if (!user) return null;
+
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  const profileData = profile as any;
+  const targetCalories = profileData?.target_calories || 0;
+  const targetProtein = profileData?.target_protein || 0;
+
+  // 2. Fetch Today's Nutrition Logs
+  const today = new Date().toISOString().split('T')[0];
+  const { data: nutritionLogs } = await supabase
+    .from('nutrition_logs')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('date', today);
+
+  const currentCalories = nutritionLogs?.reduce((acc: number, log: any) => acc + (log.calories || 0), 0) || 0;
+  const currentProtein = nutritionLogs?.reduce((acc: number, log: any) => acc + (log.protein || 0), 0) || 0;
+  const currentCarbs = nutritionLogs?.reduce((acc: number, log: any) => acc + (log.carbs || 0), 0) || 0;
+  const currentFat = nutritionLogs?.reduce((acc: number, log: any) => acc + (log.fat || 0), 0) || 0;
+
   const macros = {
-    calories: { current: 1850, target: 2500 },
-    protein: { current: 120, target: 160, color: 'var(--blue-1)' },
-    carbs: { current: 200, target: 300, color: 'var(--fire-1)' },
-    fat: { current: 63, target: 70, color: 'var(--green-1)' }
+    calories: { current: currentCalories, target: targetCalories },
+    protein: { current: currentProtein, target: targetProtein, color: 'var(--blue-1)' },
+    carbs: { current: currentCarbs, target: 0, color: 'var(--fire-1)' }, // Target not defined in DB yet, leave 0
+    fat: { current: currentFat, target: 0, color: 'var(--green-1)' }
   };
 
-  const streak = [
-    { day: 'L', active: true },
-    { day: 'M', active: true },
-    { day: 'X', active: true },
-    { day: 'J', active: false },
-    { day: 'V', active: false },
-    { day: 'S', active: false },
-    { day: 'D', active: false },
-  ];
+  // 3. Fetch Workout Streak (Last 7 days)
+  const last7Days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().split('T')[0];
+  });
+
+  const { data: workoutLogs } = await supabase
+    .from('workout_logs')
+    .select('date')
+    .eq('user_id', user.id)
+    .in('date', last7Days);
+
+  const activeDates = new Set(workoutLogs?.map((l: any) => l.date) || []);
+  
+  const streak = last7Days.map(dateStr => {
+    const d = new Date(dateStr);
+    const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' }).charAt(0).toUpperCase();
+    return { day: dayName, active: activeDates.has(dateStr) };
+  });
 
   const date = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -41,7 +71,7 @@ export default async function DashboardPage() {
     const center = size / 2;
     const radius = center - strokeWidth;
     const dashArray = 2 * Math.PI * radius;
-    const percentage = Math.min(macros.calories.current / macros.calories.target, 1);
+    const percentage = macros.calories.target > 0 ? Math.min(macros.calories.current / macros.calories.target, 1) : 0;
     const dashOffset = dashArray * (1 - percentage);
 
     return (

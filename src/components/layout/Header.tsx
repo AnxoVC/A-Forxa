@@ -4,6 +4,7 @@ import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Bell, Flame } from 'lucide-react';
 import styles from './Header.module.css';
+import ThemeLanguageToggles from './ThemeLanguageToggles';
 
 export default function Header({ user }: { user: any }) {
   const t = useTranslations('nav');
@@ -19,6 +20,7 @@ export default function Header({ user }: { user: any }) {
       </div>
 
       <div className={styles.actions}>
+        <ThemeLanguageToggles />
         <div className={styles.streakBadge}>
           <Flame size={16} className="text-fire" />
           <span>3</span>
