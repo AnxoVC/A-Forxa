@@ -139,7 +139,8 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 .app-header {
   height: var(--header-h);
   border-bottom: 1px solid var(--border);
-  background: rgba(15, 15, 26, 0.8);
+  background: var(--bg-surface);
+  opacity: 0.95;
   backdrop-filter: blur(12px);
   display: flex;
   align-items: center;

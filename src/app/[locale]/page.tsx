@@ -10,7 +10,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return { title: `A Forxa | ${t('dashboard')}` };
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'dashboard' });
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -58,11 +60,11 @@ export default async function DashboardPage() {
   
   const streak = last7Days.map(dateStr => {
     const d = new Date(dateStr);
-    const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' }).charAt(0).toUpperCase();
+    const dayName = d.toLocaleDateString(locale === 'en' ? 'en-US' : locale === 'gl' ? 'gl-ES' : 'es-ES', { weekday: 'short' }).charAt(0).toUpperCase();
     return { day: dayName, active: activeDates.has(dateStr) };
   });
 
-  const date = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const date = new Date().toLocaleDateString(locale === 'en' ? 'en-US' : locale === 'gl' ? 'gl-ES' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
   // A helper component for the circular progress (Donut)
   const CalorieDonut = () => {
@@ -96,8 +98,8 @@ export default async function DashboardPage() {
           </defs>
         </svg>
         <div className={styles.macroInfo}>
-          <div className={styles.value}>{macros.calories.target - macros.calories.current}</div>
-          <div className={styles.label}>kcal restantes</div>
+          <div className={styles.value}>{Math.max(macros.calories.target - macros.calories.current, 0)}</div>
+          <div className={styles.label}>{t('calories_remaining')}</div>
         </div>
       </div>
     );
@@ -107,7 +109,7 @@ export default async function DashboardPage() {
     <div className={styles.dashboard}>
       <div className={styles.greeting}>
         <div>
-          <h1>¡Hola, {user?.email?.split('@')[0] || 'Anxo'}!</h1>
+          <h1>{t('greeting_default', { name: profileData?.name || user?.email?.split('@')[0] || 'Forjador' })}</h1>
           <p>{date.charAt(0).toUpperCase() + date.slice(1)}</p>
         </div>
         <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -119,7 +121,7 @@ export default async function DashboardPage() {
         <div className={styles.card}>
           <div className={styles.cardTitle}>
             <Target size={20} className="text-fire" />
-            <span>Nutrición Hoy</span>
+            <span>{t('macros_today')}</span>
           </div>
           
           <CalorieDonut />
@@ -127,8 +129,8 @@ export default async function DashboardPage() {
           <div className={styles.macroBars}>
             {['protein', 'carbs', 'fat'].map((macro) => {
               const data = macros[macro as keyof Omit<typeof macros, 'calories'>];
-              const percent = Math.min((data.current / data.target) * 100, 100);
-              const labelMap = { protein: 'Proteínas', carbs: 'Carbohidratos', fat: 'Grasas' };
+              const percent = data.target > 0 ? Math.min((data.current / data.target) * 100, 100) : 0;
+              const labelMap = { protein: t('protein'), carbs: t('carbs'), fat: t('fat') };
               
               return (
                 <div key={macro} className={styles.macroBar}>
@@ -152,7 +154,7 @@ export default async function DashboardPage() {
           <div className={styles.card}>
             <div className={styles.cardTitle}>
               <Activity size={20} className="text-fire" />
-              <span>Racha de Entrenamientos</span>
+              <span>{t('streak')}</span>
             </div>
             <div className={styles.streakDays}>
               {streak.map((d, i) => (

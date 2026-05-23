@@ -97,26 +97,39 @@ export default function TrainingPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Dumbbell size={28} className="text-fire" />
-          Entrenamiento
+          {t('title')}
         </h1>
       </div>
 
-      {/* Quick Start Action */}
-      <button 
+      {/* Hero Action */}
+      <div 
         onClick={startEmptyWorkout}
-        style={{ width: '100%', padding: '24px', background: 'var(--fire-1)', borderRadius: '16px', color: 'white', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', boxShadow: '0 8px 32px rgba(239, 68, 68, 0.3)', transition: 'transform 0.2s', cursor: 'pointer' }}
-        className="hover:scale-[1.02]"
+        style={{ 
+          background: 'var(--fire-grad)', 
+          borderRadius: '24px', 
+          padding: '40px 24px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          gap: '16px',
+          cursor: 'pointer',
+          boxShadow: 'var(--fire-glow)',
+          transition: 'transform 0.2s',
+          color: 'white'
+        }}
+        className="hover:-translate-y-1"
       >
-        <div style={{ background: 'rgba(255,255,255,0.2)', padding: '16px', borderRadius: '50%' }}>
-          <Play size={32} fill="currentColor" />
+        <div style={{ width: '64px', height: '64px', background: 'rgba(255,255,255,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Play size={32} fill="white" />
         </div>
-        <div style={{ fontSize: '18px', fontWeight: 700 }}>Empezar Entreno Libre</div>
-      </button>
+        <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 700 }}>{t('start_session')}</h2>
+      </div>
 
-      {/* Routines Section */}
+      {/* Routines List */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>Mis Rutinas</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>{t('routines')}</h2>
           <button onClick={createRoutine} style={{ background: 'none', border: 'none', color: 'var(--blue-1)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
             <Plus size={18} /> Nueva
           </button>
@@ -126,9 +139,9 @@ export default function TrainingPage() {
           <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: '20px' }}>Cargando...</div>
         ) : routines.length === 0 ? (
           <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px dashed var(--border)', textAlign: 'center', color: 'var(--text-3)' }}>
-            <p style={{ margin: '0 0 16px 0', fontSize: '14px' }}>No tienes rutinas guardadas.</p>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px' }}>{t('no_routines')}</p>
             <button onClick={createRoutine} className="btn-secondary" style={{ padding: '8px 16px' }}>
-              Crear mi primera rutina
+              {t('create_first_routine')}
             </button>
           </div>
         ) : (
