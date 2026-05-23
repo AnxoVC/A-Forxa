@@ -155,7 +155,7 @@ export default function NutritionPage() {
                 <div>
                   <div style={{ fontWeight: 500, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {log.food_name}
-                    <button onClick={() => deleteLog(log.id)} style={{ background: 'none', border: 'none', color: 'var(--fire-2)', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', cursor: 'pointer' }}>Borrar</button>
+                    <button onClick={() => deleteLog(log.id)} style={{ border: 'none', color: 'var(--fire-2)', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', cursor: 'pointer' }}>Borrar</button>
                   </div>
                   <div style={{ color: 'var(--text-3)', fontSize: '12px', marginTop: '2px' }}>{log.amount_g}g • {log.brand || 'Sin marca'}</div>
                 </div>
