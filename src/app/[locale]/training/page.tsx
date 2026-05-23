@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function TrainingPage() {
-  const t = useTranslations('nav');
+  const t = useTranslations('training');
   const [routines, setRoutines] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
