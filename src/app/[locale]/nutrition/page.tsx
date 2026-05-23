@@ -1,194 +1,273 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { Search, Barcode, Plus, Check, ShoppingCart, Calendar, Coffee, Utensils, Apple } from 'lucide-react';
-import styles from './page.module.css';
+import { Search, Barcode, Plus, Utensils, Apple, Coffee, Flame, AlertCircle } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import FoodSearchModal from '@/components/nutrition/FoodSearchModal';
+import { format } from 'date-fns';
+
+interface NutritionLog {
+  id: string;
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  food_name: string;
+  brand: string | null;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  amount_g: number;
+}
 
 export default function NutritionPage() {
-  const t = useTranslations('nutrition'); // Assuming these exist, if not we will just use Spanish fallback text
-  const [activeTab, setActiveTab] = useState<'diary' | 'menu' | 'shopping'>('diary');
-  const [searchQuery, setSearchQuery] = useState('');
+  const t = useTranslations('nav');
+  const [activeTab, setActiveTab] = useState<'diary' | 'menu'>('diary');
+  
+  // Database states
+  const [logs, setLogs] = useState<NutritionLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [targetCalories, setTargetCalories] = useState(2000);
+  const [targetProtein, setTargetProtein] = useState(150);
 
-  // Mock data for Diary
-  const macros = {
-    cals: { current: 1200, target: 2500 },
-    prot: { current: 85, target: 160 },
-    carb: { current: 110, target: 300 },
-    fat: { current: 40, target: 70 }
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMeal, setSelectedMeal] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
+      // 1. Fetch Profile Targets
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', userData.user.id).single();
+      if (profile) {
+        setTargetCalories(profile.target_calories || 2000);
+        setTargetProtein(profile.target_protein || 150);
+      }
+
+      // 2. Fetch Today's Logs
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const { data: todayLogs } = await supabase
+        .from('nutrition_logs')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .eq('date', today);
+
+      if (todayLogs) {
+        setLogs(todayLogs);
+      }
+    } catch (err) {
+      console.error('Error fetching nutrition data', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const meals = [
-    { id: 'breakfast', name: 'Desayuno', icon: Coffee, items: [{ name: 'Avena con Proteína', cals: 350, prot: 30 }] },
-    { id: 'lunch', name: 'Comida', icon: Utensils, items: [] },
-    { id: 'dinner', name: 'Cena', icon: Utensils, items: [] },
-    { id: 'snacks', name: 'Snacks', icon: Apple, items: [{ name: 'Plátano', cals: 105, prot: 1 }] },
-  ];
+  const handleAddFood = async (food: any, amountG: number) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
 
-  // Mock data for Shopping List
-  const [shoppingList, setShoppingList] = useState([
-    { id: 1, name: 'Pechuga de Pollo', category: 'Carnes', qty: '1 kg', checked: false },
-    { id: 2, name: 'Arroz Basmati', category: 'Despensa', qty: '1 paquete', checked: true },
-    { id: 3, name: 'Huevos', category: 'Frescos', qty: '2 docenas', checked: false },
-    { id: 4, name: 'Avena en copos', category: 'Despensa', qty: '500g', checked: false },
-  ]);
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const multiplier = amountG / 100;
+      
+      const newLog = {
+        user_id: userData.user.id,
+        date: today,
+        meal_type: selectedMeal,
+        food_name: food.name,
+        brand: food.brand,
+        amount_g: amountG,
+        calories: Math.round(food.calories * multiplier),
+        protein: food.protein * multiplier,
+        carbs: food.carbs * multiplier,
+        fat: food.fat * multiplier,
+        barcode: food.barcode
+      };
 
-  const toggleItem = (id: number) => {
-    setShoppingList(list => list.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+      const { data, error } = await supabase.from('nutrition_logs').insert(newLog).select().single();
+      if (error) throw error;
+      
+      setLogs([...logs, data]);
+    } catch (error) {
+      console.error('Error adding food', error);
+      alert('Error al añadir el alimento.');
+    }
   };
+
+  const deleteLog = async (id: string) => {
+    try {
+      await supabase.from('nutrition_logs').delete().eq('id', id);
+      setLogs(logs.filter(log => log.id !== id));
+    } catch (error) {
+      console.error('Error deleting food', error);
+    }
+  };
+
+  const openSearch = (meal: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    setSelectedMeal(meal);
+    setIsModalOpen(true);
+  };
+
+  // Calculate Totals
+  const totalCalories = logs.reduce((sum, log) => sum + log.calories, 0);
+  const totalProtein = logs.reduce((sum, log) => sum + log.protein, 0);
+  const totalCarbs = logs.reduce((sum, log) => sum + log.carbs, 0);
+  const totalFat = logs.reduce((sum, log) => sum + log.fat, 0);
+
+  const renderMealSection = (type: 'breakfast' | 'lunch' | 'dinner' | 'snack', title: string, icon: any) => {
+    const mealLogs = logs.filter(l => l.meal_type === type);
+    const mealCalories = mealLogs.reduce((sum, log) => sum + log.calories, 0);
+
+    return (
+      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden', marginBottom: '16px' }}>
+        <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: mealLogs.length > 0 ? '1px solid var(--border)' : 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ background: 'var(--bg-surface)', padding: '8px', borderRadius: '8px' }}>
+              {icon}
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>{title}</h3>
+              <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{mealCalories} kcal</span>
+            </div>
+          </div>
+          <button 
+            onClick={() => openSearch(type)}
+            className="text-fire hover:bg-white/5" 
+            style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <Plus size={20} />
+          </button>
+        </div>
+
+        {mealLogs.length > 0 && (
+          <div style={{ padding: '0 16px' }}>
+            {mealLogs.map(log => (
+              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border)' }} className="last:border-0">
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {log.food_name}
+                    <button onClick={() => deleteLog(log.id)} style={{ background: 'none', border: 'none', color: 'var(--fire-2)', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', cursor: 'pointer' }}>Borrar</button>
+                  </div>
+                  <div style={{ color: 'var(--text-3)', fontSize: '12px', marginTop: '2px' }}>{log.amount_g}g • {log.brand || 'Sin marca'}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 600, fontSize: '14px' }}>{log.calories} kcal</div>
+                  <div style={{ color: 'var(--text-3)', fontSize: '11px', marginTop: '2px', display: 'flex', gap: '6px' }}>
+                    <span style={{ color: 'var(--blue-1)' }}>{log.protein.toFixed(1)}p</span>
+                    <span style={{ color: 'var(--yellow-1)' }}>{log.carbs.toFixed(1)}c</span>
+                    <span style={{ color: 'var(--fire-2)' }}>{log.fat.toFixed(1)}g</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-3)' }}>Cargando datos de nutrición...</div>;
+  }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>{t('title') || 'Nutrición'}</h1>
-        <button className={styles.scanBtn}>
-          <Barcode size={20} className="text-fire" />
-          <span className="hidden md:inline">Escanear</span>
-        </button>
-      </div>
-
-      <div className={styles.tabs}>
+    <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      {/* Tabs */}
+      <div style={{ display: 'flex', background: 'var(--bg-base)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
         <button 
-          className={`${styles.tab} ${activeTab === 'diary' ? styles.active : ''}`}
           onClick={() => setActiveTab('diary')}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600, background: activeTab === 'diary' ? 'var(--bg-surface)' : 'transparent', color: activeTab === 'diary' ? 'var(--text-1)' : 'var(--text-2)', boxShadow: activeTab === 'diary' ? '0 2px 8px rgba(0,0,0,0.2)' : 'none' }}
         >
           Diario
         </button>
         <button 
-          className={`${styles.tab} ${activeTab === 'menu' ? styles.active : ''}`}
           onClick={() => setActiveTab('menu')}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600, background: activeTab === 'menu' ? 'var(--bg-surface)' : 'transparent', color: activeTab === 'menu' ? 'var(--text-1)' : 'var(--text-2)', boxShadow: activeTab === 'menu' ? '0 2px 8px rgba(0,0,0,0.2)' : 'none' }}
         >
-          Menú
-        </button>
-        <button 
-          className={`${styles.tab} ${activeTab === 'shopping' ? styles.active : ''}`}
-          onClick={() => setActiveTab('shopping')}
-        >
-          Compra
+          Plan Semanal
         </button>
       </div>
 
       {activeTab === 'diary' && (
-        <div>
-          <div className={styles.searchBar}>
-            <Search size={20} className={styles.searchIcon} />
-            <input 
-              type="text" 
-              placeholder="Buscar alimento o receta..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className={styles.macrosOverview}>
-            <div className={styles.macroItem}>
-              <span className={styles.macroValue} style={{ color: 'var(--fire-1)' }}>{macros.cals.current}</span>
-              <span className={styles.macroLabel}>Kcal</span>
-            </div>
-            <div className={styles.macroItem}>
-              <span className={styles.macroValue} style={{ color: 'var(--blue-1)' }}>{macros.prot.current}</span>
-              <span className={styles.macroLabel}>Prot</span>
-            </div>
-            <div className={styles.macroItem}>
-              <span className={styles.macroValue} style={{ color: 'var(--fire-2)' }}>{macros.carb.current}</span>
-              <span className={styles.macroLabel}>Carbs</span>
-            </div>
-            <div className={styles.macroItem}>
-              <span className={styles.macroValue} style={{ color: 'var(--green-1)' }}>{macros.fat.current}</span>
-              <span className={styles.macroLabel}>Grasas</span>
-            </div>
-          </div>
-
-          <div className={styles.mealsList}>
-            {meals.map(meal => (
-              <div key={meal.id} className={styles.mealCard}>
-                <div className={styles.mealHeader}>
-                  <div className={styles.mealTitle}>
-                    <meal.icon size={20} className="text-fire" />
-                    {meal.name}
-                  </div>
-                  <button className={styles.mealAddBtn}>
-                    <Plus size={20} />
-                  </button>
-                </div>
-                {meal.items.length === 0 ? (
-                  <div className={styles.emptyMeal}>No hay alimentos registrados</div>
-                ) : (
-                  <div>
-                    {meal.items.map((item, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontWeight: 500 }}>{item.name}</span>
-                        <div style={{ color: 'var(--text-2)', fontSize: '14px' }}>
-                          <span style={{ color: 'var(--fire-1)', fontWeight: 600 }}>{item.cals} kcal</span>
-                          <span style={{ marginLeft: '8px', color: 'var(--blue-1)' }}>{item.prot}g P</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'shopping' && (
-        <div>
-          <div className={styles.header} style={{ marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShoppingCart size={20} className="text-fire" /> 
-              Lista de la Compra
-            </h2>
-            <button className={styles.mealAddBtn} style={{ background: 'var(--fire-grad)', color: 'white' }}>
-              <Plus size={20} />
-            </button>
-          </div>
-
-          <div className={styles.mealCard} style={{ padding: 0, overflow: 'hidden' }}>
-            {shoppingList.map(item => (
-              <div key={item.id} className={styles.shoppingItem}>
-                <div 
-                  className={`${styles.checkbox} ${item.checked ? styles.checked : ''}`}
-                  onClick={() => toggleItem(item.id)}
-                >
-                  {item.checked && <Check size={16} />}
-                </div>
-                <div className={styles.itemInfo}>
-                  <div className={`${styles.itemName} ${item.checked ? styles.crossed : ''}`}>
-                    {item.name}
-                  </div>
-                  <div className={styles.itemMeta}>
-                    {item.qty} • {item.category}
-                  </div>
+        <>
+          {/* Daily Summary Rings */}
+          <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-2)' }}>Restantes hoy</h3>
+                <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {Math.max(0, targetCalories - totalCalories)} <span style={{ fontSize: '16px', color: 'var(--text-3)', fontWeight: 500 }}>kcal</span>
                 </div>
               </div>
-            ))}
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', border: '6px solid var(--fire-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Flame className="text-fire" size={24} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                  <span style={{ color: 'var(--blue-1)' }}>Proteínas</span>
+                  <span>{totalProtein.toFixed(0)} / {targetProtein}g</span>
+                </div>
+                <div style={{ height: '6px', background: 'var(--bg-surface)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: 'var(--blue-1)', width: `${Math.min(100, (totalProtein / targetProtein) * 100)}%` }}></div>
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                  <span style={{ color: 'var(--yellow-1)' }}>Carbos</span>
+                  <span>{totalCarbs.toFixed(0)}g</span>
+                </div>
+                <div style={{ height: '6px', background: 'var(--bg-surface)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: 'var(--yellow-1)', width: `${Math.min(100, (totalCarbs / 250) * 100)}%` }}></div>
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                  <span style={{ color: 'var(--fire-2)' }}>Grasas</span>
+                  <span>{totalFat.toFixed(0)}g</span>
+                </div>
+                <div style={{ height: '6px', background: 'var(--bg-surface)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: 'var(--fire-2)', width: `${Math.min(100, (totalFat / 70) * 100)}%` }}></div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* Meals */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {renderMealSection('breakfast', 'Desayuno', <Coffee size={18} className="text-fire" />)}
+            {renderMealSection('lunch', 'Comida', <Utensils size={18} className="text-fire" />)}
+            {renderMealSection('dinner', 'Cena', <Utensils size={18} className="text-fire" />)}
+            {renderMealSection('snack', 'Snacks', <Apple size={18} className="text-fire" />)}
+          </div>
+        </>
       )}
 
       {activeTab === 'menu' && (
-        <div>
-          <div className={styles.header} style={{ marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Calendar size={20} className="text-fire" /> 
-              Menú Semanal
-            </h2>
-          </div>
-
-          <div className={styles.weeklyGrid}>
-            {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
-              <div key={day} className={styles.dayCard}>
-                <div className={styles.dayName}>{day}</div>
-                <div className={styles.emptyMeal} style={{ padding: '8px 0', fontSize: '12px' }}>
-                  <Plus size={16} style={{ margin: '0 auto 8px' }} />
-                  Planificar
-                </div>
-              </div>
-            ))}
-          </div>
+        <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center', color: 'var(--text-3)' }}>
+          <AlertCircle size={48} style={{ margin: '0 auto 16px auto', opacity: 0.2 }} />
+          <h3 style={{ color: 'var(--text-1)', fontSize: '18px', margin: '0 0 8px 0' }}>Plan Semanal Próximamente</h3>
+          <p style={{ margin: 0, fontSize: '14px' }}>Esta función te permitirá planificar tus comidas de toda la semana y generar la lista de la compra automáticamente.</p>
         </div>
       )}
+
+      <FoodSearchModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onAdd={handleAddFood}
+        mealType={selectedMeal}
+      />
     </div>
   );
 }
