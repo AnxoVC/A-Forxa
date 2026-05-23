@@ -88,9 +88,11 @@ export default function FoodSearchModal({ isOpen, onClose, onAdd, mealType }: Fo
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20`);
+      const res = await fetch(`/api/food/search?q=${encodeURIComponent(query)}`);
       const data = await res.json();
       
+      if (data.error) throw new Error(data.error);
+
       const parsedResults: FoodItem[] = data.products
         .filter((p: any) => p.product_name && p.nutriments && p.nutriments['energy-kcal_100g'] !== undefined)
         .map((p: any) => ({
@@ -119,8 +121,10 @@ export default function FoodSearchModal({ isOpen, onClose, onAdd, mealType }: Fo
     setError(null);
     setQuery(barcode); // Show what was scanned
     try {
-      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const res = await fetch(`/api/food/search?barcode=${barcode}`);
       const data = await res.json();
+      
+      if (data.error) throw new Error(data.error);
       
       if (data.status === 1 && data.product) {
         const p = data.product;
