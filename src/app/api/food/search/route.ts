@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
     if (query) {
       // Use the standard search endpoint, server-side bypasses CORS
-      const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20`, {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(query)}&fields=code,product_name,brands,nutriments&page_size=20`, {
         headers: {
           'User-Agent': 'AForxa/1.0 - Web Application'
         }
