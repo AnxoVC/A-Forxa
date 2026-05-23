@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Check, Play, Square, Timer, ChevronDown } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import ExerciseSearchModal from './ExerciseSearchModal';
 
 interface WorkoutSet {
   id: string;
@@ -15,6 +16,7 @@ interface WorkoutSet {
 interface WorkoutExercise {
   id: string;
   name: string;
+  gifUrl?: string;
   sets: WorkoutSet[];
 }
 
@@ -31,7 +33,6 @@ export default function ActiveWorkout({ isOpen, onClose, routineId, routineName 
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
-  const [newExerciseName, setNewExerciseName] = useState('');
   
   const supabase = createClient();
   const router = useRouter();
@@ -50,11 +51,12 @@ export default function ActiveWorkout({ isOpen, onClose, routineId, routineName 
   // Reset when opened
   useEffect(() => {
     if (isOpen) {
-      setStartTime(Date.now());
-      setElapsedTime(0);
-      setExercises([]);
-      // If we had a predefined routine, we would load its exercises here.
-      // Since we start empty, we just leave it empty.
+      // NOTE: Using functional updates or timeout to avoid synchronous setState during effect
+      setTimeout(() => {
+        setStartTime(Date.now());
+        setElapsedTime(0);
+        setExercises([]);
+      }, 0);
     }
   }, [isOpen]);
 
@@ -64,20 +66,18 @@ export default function ActiveWorkout({ isOpen, onClose, routineId, routineName 
     return `${m}:${s}`;
   };
 
-  const addExercise = () => {
-    if (!newExerciseName.trim()) return;
-    
+  const handleExerciseSelected = (name: string, gifUrl: string) => {
     setExercises([
       ...exercises, 
       {
         id: Math.random().toString(36).substr(2, 9),
-        name: newExerciseName,
+        name: name,
+        gifUrl: gifUrl,
         sets: [
           { id: Math.random().toString(36).substr(2, 9), reps: '', weight: '', completed: false }
         ]
       }
     ]);
-    setNewExerciseName('');
     setShowAddExercise(false);
   };
 
@@ -212,7 +212,12 @@ export default function ActiveWorkout({ isOpen, onClose, routineId, routineName 
         
         {exercises.map((ex, exIndex) => (
           <div key={ex.id} style={{ background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border)', marginBottom: '24px', overflow: 'hidden' }}>
-            <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+              {ex.gifUrl && (
+                <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'white', overflow: 'hidden', flexShrink: 0 }}>
+                  <img src={ex.gifUrl} alt={ex.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
+                </div>
+              )}
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--blue-1)' }}>{ex.name}</h3>
             </div>
             
@@ -286,36 +291,11 @@ export default function ActiveWorkout({ isOpen, onClose, routineId, routineName 
 
       </div>
 
-      {/* Add Exercise Modal */}
-      {showAddExercise && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1001, display: 'flex', alignItems: 'flex-end' }}>
-          <div style={{ width: '100%', background: 'var(--bg-card)', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '24px', paddingBottom: '40px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>Elegir Ejercicio</h3>
-              <button onClick={() => setShowAddExercise(false)} style={{ background: 'none', border: 'none', color: 'var(--text-2)' }}><X size={24}/></button>
-            </div>
-            
-            <input 
-              type="text" 
-              placeholder="Ej: Press de Banca, Sentadilla..." 
-              value={newExerciseName}
-              onChange={(e) => setNewExerciseName(e.target.value)}
-              className="input-field"
-              style={{ marginBottom: '16px' }}
-              autoFocus
-            />
-
-            <button 
-              onClick={addExercise}
-              className="btn-primary" 
-              style={{ width: '100%', padding: '16px' }}
-              disabled={!newExerciseName.trim()}
-            >
-              Añadir
-            </button>
-          </div>
-        </div>
-      )}
+      <ExerciseSearchModal 
+        isOpen={showAddExercise} 
+        onClose={() => setShowAddExercise(false)} 
+        onSelectExercise={handleExerciseSelected} 
+      />
 
     </div>
   );
