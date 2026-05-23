@@ -88,7 +88,7 @@ export default function FoodSearchModal({ isOpen, onClose, onAdd, mealType }: Fo
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/food/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(query)}&fields=code,product_name,brands,nutriments&page_size=20`);
       const data = await res.json();
       
       if (data.error) throw new Error(data.error);
@@ -121,7 +121,7 @@ export default function FoodSearchModal({ isOpen, onClose, onAdd, mealType }: Fo
     setError(null);
     setQuery(barcode); // Show what was scanned
     try {
-      const res = await fetch(`/api/food/search?barcode=${barcode}`);
+      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
       const data = await res.json();
       
       if (data.error) throw new Error(data.error);
