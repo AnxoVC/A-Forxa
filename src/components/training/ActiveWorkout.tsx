@@ -169,7 +169,7 @@ export default function ActiveWorkout({ isOpen, onClose, routineId, routineName 
       });
 
       if (setsToInsert.length > 0) {
-        const { error: setsError } = await supabase.from('workout_sets').insert(setsToInsert as any[]);
+        const { error: setsError } = await supabase.from('workout_sets').insert(setsToInsert as any);
         if (setsError) throw setsError;
       }
 
