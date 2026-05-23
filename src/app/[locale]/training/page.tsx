@@ -57,6 +57,10 @@ export default function TrainingPage() {
     }
   };
 
+  const [isCreatingRoutine, setIsCreatingRoutine] = useState(false);
+  const [newRoutineName, setNewRoutineName] = useState('');
+  const [isSavingRoutine, setIsSavingRoutine] = useState(false);
+
   const startEmptyWorkout = () => {
     setActiveRoutineId(null);
     setActiveRoutineName('');
@@ -69,24 +73,28 @@ export default function TrainingPage() {
     setIsWorkoutActive(true);
   };
 
-  const createRoutine = async () => {
-    const name = prompt('Nombre de la nueva rutina:');
-    if (!name) return;
+  const submitNewRoutine = async () => {
+    if (!newRoutineName.trim()) return;
+    setIsSavingRoutine(true);
 
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      const { data, error } = await supabase.from('routines').insert({
+      const { data, error } = await (supabase.from('routines') as any).insert({
         user_id: userData.user.id,
-        name
-      } as any).select().single();
+        name: newRoutineName
+      }).select().single();
 
       if (error) throw error;
       setRoutines([data, ...routines]);
+      setNewRoutineName('');
+      setIsCreatingRoutine(false);
     } catch (error) {
       console.error('Error creating routine', error);
       alert('Error al crear la rutina');
+    } finally {
+      setIsSavingRoutine(false);
     }
   };
 
@@ -130,17 +138,48 @@ export default function TrainingPage() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>{t('routines')}</h2>
-          <button onClick={createRoutine} style={{ background: 'none', border: 'none', color: 'var(--blue-1)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-            <Plus size={18} /> Nueva
-          </button>
+          {!isCreatingRoutine && (
+            <button onClick={() => setIsCreatingRoutine(true)} style={{ background: 'none', border: 'none', color: 'var(--blue-1)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+              <Plus size={18} /> Nueva
+            </button>
+          )}
         </div>
+
+        {isCreatingRoutine && (
+          <div style={{ background: 'var(--bg-card)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', marginBottom: '16px', display: 'flex', gap: '12px' }}>
+            <input 
+              type="text" 
+              placeholder="Nombre de la rutina..." 
+              value={newRoutineName}
+              onChange={(e) => setNewRoutineName(e.target.value)}
+              style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-1)' }}
+              autoFocus
+            />
+            <button 
+              onClick={submitNewRoutine}
+              disabled={!newRoutineName.trim() || isSavingRoutine}
+              style={{ background: 'var(--blue-1)', color: 'white', border: 'none', padding: '0 20px', borderRadius: '8px', fontWeight: 600 }}
+            >
+              {isSavingRoutine ? '...' : 'Guardar'}
+            </button>
+            <button 
+              onClick={() => {
+                setIsCreatingRoutine(false);
+                setNewRoutineName('');
+              }}
+              style={{ background: 'transparent', color: 'var(--text-3)', border: '1px solid var(--border)', padding: '0 16px', borderRadius: '8px', fontWeight: 600 }}
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: '20px' }}>Cargando...</div>
-        ) : routines.length === 0 ? (
+        ) : routines.length === 0 && !isCreatingRoutine ? (
           <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px dashed var(--border)', textAlign: 'center', color: 'var(--text-3)' }}>
             <p style={{ margin: '0 0 16px 0', fontSize: '14px' }}>{t('no_routines')}</p>
-            <button onClick={createRoutine} className="btn-secondary" style={{ padding: '8px 16px' }}>
+            <button onClick={() => setIsCreatingRoutine(true)} className="btn-secondary" style={{ padding: '8px 16px' }}>
               {t('create_first_routine')}
             </button>
           </div>
