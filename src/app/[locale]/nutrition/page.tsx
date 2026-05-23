@@ -38,6 +38,19 @@ export default function NutritionPage() {
 
   // Weekly Plan states
   const [expandedDay, setExpandedDay] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [showShoppingList, setShowShoppingList] = useState(false);
+
+  const generateShoppingList = () => {
+    const list: Record<string, { name: string, brand: string | null, amount: number }> = {};
+    logs.forEach(log => {
+      const key = `${log.food_name}-${log.brand || ''}`;
+      if (!list[key]) {
+        list[key] = { name: log.food_name, brand: log.brand, amount: 0 };
+      }
+      list[key].amount += log.amount_g;
+    });
+    return list;
+  };
 
   const supabase = createClient();
   
@@ -275,7 +288,10 @@ export default function NutritionPage() {
       {activeTab === 'menu' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          <button style={{ width: '100%', padding: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', color: 'var(--text-1)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+          <button 
+            onClick={() => setShowShoppingList(true)}
+            style={{ width: '100%', padding: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', color: 'var(--text-1)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
+          >
             <ShoppingCart size={20} className="text-fire" /> Generar Lista de Compra
           </button>
 
@@ -317,6 +333,39 @@ export default function NutritionPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {showShoppingList && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: '24px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShoppingCart size={24} className="text-fire" /> Lista de la Compra
+            </h3>
+            <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '14px' }}>Basado en tu Plan Semanal de esta semana.</p>
+            
+            <div style={{ background: 'var(--bg-surface)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {Object.values(generateShoppingList()).length === 0 ? (
+                <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: '20px' }}>Tu plan semanal está vacío. Añade alimentos a los días de la semana para generar la lista.</div>
+              ) : (
+                Object.values(generateShoppingList()).sort((a: any, b: any) => b.amount - a.amount).map((item: any, idx: number) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }} className="last:border-0 last:pb-0">
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-1)' }}>{item.name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>{item.brand || 'Marca genérica'}</div>
+                    </div>
+                    <div style={{ fontWeight: 800, color: 'var(--text-2)', background: 'var(--bg-card)', padding: '4px 12px', borderRadius: '20px', fontSize: '14px' }}>
+                      {Math.ceil(item.amount)} g
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button onClick={() => setShowShoppingList(false)} style={{ width: '100%', padding: '16px', background: 'var(--fire-1)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 600, marginTop: '8px' }}>
+              Cerrar
+            </button>
+          </div>
         </div>
       )}
 
